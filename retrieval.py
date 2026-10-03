@@ -2,24 +2,13 @@ from dotenv import load_dotenv
 import os
 from langchain_google_genai import ( #connect langchain to gemini
     ChatGoogleGenerativeAI,
-    GoogleGenerativeAIEmbeddings
 )   
 from langchain_qdrant import QdrantVectorStore # search your qudarnt collection
 from langchain_huggingface import HuggingFaceEmbeddings
-from pypdf import PdfReader
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-COLLECTION_NAME = "course_documents-2"
+COLLECTION_NAME = "course_documents-3"
 CHAT_MODEL = 'gemini-3.5-flash-lite'
-
-from pypdf import PdfReader
-
-def get_printed_page(doc):
-    pdf_page_index = int(doc.metadata["page"])
-    source = doc.metadata["source"]
-    text = PdfReader(source).pages[pdf_page_index].extract_text() or ""
-    first_line = next((line.strip() for line in text.splitlines() if line.strip()), "")
-    return first_line if first_line.isdigit() else "unknown"
 
 
 def main():
@@ -64,9 +53,16 @@ def main():
     source_pages = []
 
     for doc in matching_chunks:
-        book_page = get_printed_page(doc)
-        context.append(f"[Printed book page {book_page}]\n{doc.page_content}")
-        source_pages.append(book_page)
+        printed_page = doc.metadata.get("printed_page") or "unknown"
+        pdf_page = doc.metadata.get("pdf_page", "unknown")
+
+        context.append(
+            f"[Printed book page {printed_page} | PDF Page {pdf_page}]\n"
+            f"{doc.page_content}"
+        )
+        source_pages.append(
+            f"Book page {printed_page} (PDF page {pdf_page})"
+        )
 
 
     PROMPT = f'''
@@ -92,6 +88,7 @@ def main():
     response = chatModel.invoke(PROMPT)
     print('\nAnswer:')
     print(response.text)
+    print("\nSources:")
 
 if __name__ == "__main__":
     main()

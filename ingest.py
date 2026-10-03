@@ -10,7 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter  # splits pa
 from langchain_huggingface import HuggingFaceEmbeddings
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-COLLECTION_NAME = "course_documents-2"
+COLLECTION_NAME = "course_documents-3"
 
 def main():
     load_dotenv()
@@ -26,9 +26,15 @@ def main():
         raise RuntimeError('Add Gemini api key to your .env file')
 
     # Load the file in the python program into pages arrays
-    docs = PyPDFLoader(file_path=pdf_path).load()
     # Pdf laoder read the pdf structure and extracts, text usually one page at a time. PyPDFLoader uses the pypdf library underneath. It output is usally langchain list of document object each with page_content and metadata(source filename, page index) 
     # Secdon page may be img, text extraction can return empty text for that page. OCR need to read it.
+    docs = PyPDFLoader(file_path=pdf_path).load()
+    for doc in docs:
+        lines = [line.strip() for line in doc.page_content.splitlines() if line.strip()]
+        doc.metadata['pdf_page'] = int(doc.metadata['page']) + 1
+        doc.metadata['printed_page'] = (
+            lines[0] if lines and lines[0].isdigit() else None
+        )
 
     #Split the document into chunks
     #splitter gets the text from each page and break long text into pieces near a configured size.
